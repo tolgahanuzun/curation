@@ -1,6 +1,6 @@
 # Curation Config
 type = 'function'
-results = 'app.py'
+results = 'utopian.py'
 
 ## Alternative Config
 # type = 'list'
@@ -10,3 +10,8 @@ results = 'app.py'
 limit_power = 80
 username = 'bot'
 steem_key = 'key'
+
+try:
+    from settings_local import *
+except:
+    pass

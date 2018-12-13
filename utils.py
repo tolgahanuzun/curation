@@ -1,7 +1,10 @@
 import importlib
 
+from lightsteem.client import Client
+
 import settings
 
+client = Client(keys=[settings.steem_key])
 utopian_link = 'https://steemit.com/utopian-io/'
 
 
@@ -37,4 +40,29 @@ def avaible_link(link):
 
     if '#' in link:
         return False
+    return True
+
+
+def get_account(username):
+    return client.account(username)
+
+def get_vp(username):
+    account = get_account(username)
+    return account.vp()
+
+def get_rc(username):
+    account = get_account(username)
+    return account.rc()
+
+def post_vote(username, voting_user, voting_link, weight=100):
+    try:
+        op = Operation('vote', {
+            "voter": username,
+            "author": voting_user,
+            "permlink": voting_link,
+            "weight": weight,
+        })
+    except:
+        return False
+    
     return True

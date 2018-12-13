@@ -1,12 +1,14 @@
 import os
+
 import atexit
 from apscheduler.scheduler import Scheduler
-
 from flask import Flask
 
+from utils import get_vp, get_rc
 import settings
 
 app = Flask(__name__)
+
 
 def voting_list():
     # main func
@@ -17,9 +19,10 @@ def control_flow():
 
     @cron.interval_schedule(seconds=60*10)
     def job_function():
-        if voting_power(settings.Username) >= settings.Limit_voting_power:
-            print('Vote')
-            pass
+        if not get_vp(settings.username) >= settings.limit_power and get_rc < 0.1 :
+            return # not vote
+        print('Vote')
+
 
     atexit.register(lambda: cron.shutdown(wait=False))
 
