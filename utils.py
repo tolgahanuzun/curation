@@ -29,6 +29,35 @@ class Curation:
             return []
 
 
+class Steemit:
+    def __init__(self, username):
+        self.username = username
+        self.client = client
+    
+    def get_account(self):
+        return client.account(self.username)
+
+    def get_vp(self):
+        account = self.get_account()
+        return account.vp()
+
+    def get_rc(self):
+        account = self.get_account()
+        return account.rc()
+
+    def post_vote(self, voting_user, voting_link, weight=100):
+        try:
+            op = Operation('vote', {
+                "voter": self.username,
+                "author": voting_user,
+                "permlink": voting_link,
+                "weight": weight,
+            })
+        except:
+            return False
+        return True
+
+
 def avaible_link(link):
     """
     - Those who do not have a Utopian link are excluded.
@@ -40,29 +69,4 @@ def avaible_link(link):
 
     if '#' in link:
         return False
-    return True
-
-
-def get_account(username):
-    return client.account(username)
-
-def get_vp(username):
-    account = get_account(username)
-    return account.vp()
-
-def get_rc(username):
-    account = get_account(username)
-    return account.rc()
-
-def post_vote(username, voting_user, voting_link, weight=100):
-    try:
-        op = Operation('vote', {
-            "voter": username,
-            "author": voting_user,
-            "permlink": voting_link,
-            "weight": weight,
-        })
-    except:
-        return False
-    
     return True
