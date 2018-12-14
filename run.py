@@ -17,17 +17,17 @@ logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 class PostVote:
 
     def __init__(self):
+        self.steemit = Steemit(settings.username)
         self.vote = self.vote_list()
         self.voted = self.voted_list()
-        self.steemit = Steemit(settings.username)
 
     def vote_list(self):
-        if not self.steemit.get_vp(settings.username) >= settings.limit_power and self.steemit.get_rc() < 0.1 :
+        if not self.steemit.get_vp() >= settings.limit_power and self.steemit.get_rc() < 0.1 :
             return []
         return Curation(settings.type, settings.results).result
 
     def voted_list(self):
-        with open(voted_txt, 'w') as file:
+        with open(voted_txt, 'r+') as file:
             lines = file.read().splitlines()
         return lines
 
@@ -51,8 +51,9 @@ def control_flow():
     cron = Scheduler(daemon=True)
     cron.start()
 
-    @cron.interval_schedule(seconds=60*10)
+    @cron.interval_schedule(seconds=10)
     def job_function():
+        print(1)
         vote_commit = PostVote()
         vote_commit.voting_list()
 
@@ -72,6 +73,7 @@ def clear_list():
 
 if __name__ == '__main__':
     try:
+        
         control_flow()
         clear_list()
     except:
