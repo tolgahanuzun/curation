@@ -1,0 +1,5 @@
+apscheduler==2.1.2
+bs4
+flask
+requests
+lightsteem
