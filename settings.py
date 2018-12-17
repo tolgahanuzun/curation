@@ -1,6 +1,6 @@
 # Curation Config
 type = 'function'
-results = 'utopian.py'
+results = 'utopian'
 
 ## Alternative Config
 # type = 'list'
