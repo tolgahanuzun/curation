@@ -15,7 +15,6 @@ logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
 
 class PostVote:
-
     def __init__(self):
         self.steemit = Steemit(settings.username)
         self.vote = self.vote_list()
@@ -52,9 +51,8 @@ def control_flow():
     cron = Scheduler(daemon=True)
     cron.start()
 
-    @cron.interval_schedule(seconds=10)
+    @cron.interval_schedule(seconds=60*10)
     def job_function():
-        print(1)
         vote_commit = PostVote()
         vote_commit.voting_list()
 
@@ -74,7 +72,6 @@ def clear_list():
 
 if __name__ == '__main__':
     try:
-        
         control_flow()
         clear_list()
     except:
