@@ -1,11 +1,14 @@
 import importlib
+import logging
 
 from lightsteem.client import Client
+from lightsteem.datastructures import Operation
 
 import settings
 
 client = Client(keys=[settings.steem_key])
 utopian_link = 'https://steemit.com/utopian-io/'
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
 
 class Curation:
@@ -32,7 +35,6 @@ class Curation:
 class Steemit:
     def __init__(self, username):
         self.username = username
-        self.client = client
     
     def get_account(self):
         return client.account(self.username)
@@ -45,15 +47,18 @@ class Steemit:
         account = self.get_account()
         return account.rc()
 
-    def post_vote(self, voting_user, voting_link, weight=100):
+    def post_vote(self, voting_user, voting_link, weight=10000):
         try:
             op = Operation('vote', {
                 "voter": self.username,
                 "author": voting_user,
-                "permlink": voting_link,
+                "permlink": voting_link.split(f'{voting_user}/')[1],
                 "weight": weight,
             })
+            result = client.broadcast(op)
+            logging.info(result)
         except:
+            logging.info('Broadcast Fail!')
             return False
         return True
 
