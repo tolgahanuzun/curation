@@ -33,10 +33,11 @@ class PostVote:
 
     def voting_list(self):
         votings = list(set(self.vote) - set(self.voted))
+        logging.info(votings)
         for voting in votings:
-            username = list(filter(lambda x: '@' in x, voting))
+            username = list(filter(lambda x: '@' in x, voting.split('/')))[0].replace('@','')
             try:
-                self.steemit.post_vote(username, voting, 100)
+                self.steemit.post_vote(username, voting)
                 with open(voted_txt, "a") as f:
                     f.write("{}\n".format(voting))
             except:
