@@ -51,7 +51,7 @@ def control_flow():
     cron = Scheduler(daemon=True)
     cron.start()
 
-    @cron.interval_schedule(seconds=60*10)
+    @cron.interval_schedule(minutes=10)
     def job_function():
         vote_commit = PostVote()
         vote_commit.voting_list()
