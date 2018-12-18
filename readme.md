@@ -16,6 +16,11 @@ username = 'username'
 steem_key = 'token'
 ```
 
+and start!
+
+```
+python run.py
+```
 
 ## How does it work?
 
