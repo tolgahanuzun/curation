@@ -15,7 +15,7 @@ from apscheduler.scheduler import Scheduler
 import flask_admin as admin
 import flask_login as login
 
-from utils import Curation, Steemit as _Steemit
+from utils import get_expire_time, Curation, Steemit as _Steemit,
 import settings
 
 app = Flask(__name__)
@@ -65,6 +65,8 @@ class Steemit(db.Model):
 
     author = db.Column(db.String(200))
     key = db.Column(db.String(500))
+    callback_type = db.Column(db.String(200))
+    callback_name = db.Column(db.String(200))
 
     def __str__(self):
         return str(self.id)
@@ -75,7 +77,7 @@ class Steemit(db.Model):
 
 class Url(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    url = db.Column(db.String(400))
+    url = db.Column(db.String(400), unique=True)
     expire_time = db.Column(db.DateTime)
 
     def __str__(self):
@@ -91,7 +93,7 @@ class UrlAction(db.Model):
     url = db.relationship(Url)
     steemit = db.relationship(Steemit)
     voted = db.Column(db.Boolean)
-    expire_time = db.Column(db.DateTime)
+    voted_time = db.Column(db.DateTime)
 
     def __str__(self):
         return str(self.id)
@@ -199,37 +201,54 @@ def build_sample_db():
     return
 
 class PostVote:
-    def __init__(self, username, steem_key):
-        self.steemit = _Steemit(username, steem_key)
+    def __init__(self, steemit):
+        self.steem_account = steemit
+        self.steemit = _Steemit(self.steem_account.username, self.steem_account.steem_key)
+        self.callback_type = self.steem_account.callback_type
+        self.callback_name = self.steem_account.callback_name
+        self.get_new_url()
         self.vote = self.vote_list()
-        self.voted = self.voted_list()
 
-    def vote_list(self):
-        if not self.steemit.get_vp() >= settings.limit_power and self.steemit.get_rc() < 0.1 :
-            return []
-        return Curation(settings.type, settings.results).result
 
-    def voted_list(self):
-        with open(voted_txt, 'r+') as file:
-            lines = file.read().splitlines()
-        return lines
-
-    def voting_list(self):
-        votings = list(set(self.vote) - set(self.voted))
-        logging.info(votings)
-        for voting in votings:
-            username = list(filter(lambda x: '@' in x, voting.split('/')))[0].replace('@','')
+    def get_new_url(self):
+        datas = Curation(self.callback_type, self.callback_name).result
+        for data in datas:
+            expire_time = get_expire_time(data) or None
             try:
-                self.steemit.post_vote(username, voting)
-                with open(voted_txt, "a") as f:
-                    f.write("{}\n".format(voting))
+                url = Url(url=data, expire_time=datetime.strptime(expire_time, '%Y-%m-%dT%H:%M:%S'))
+                db.session.add(url)
             except:
                 pass
-        logging.info('TODO: Logger.info(Done!)')
+        db.session.commit()
+            
 
-    def removed_list(self):
-        with open(voted_txt, "w") as f:
-            f.write('')
+    def vote_list(self):
+        avaible_urls = Url.query.filter(expire_time > datetime.now())
+        for avaible_url in avaible_urls:
+            try:
+                url = UrlAction(url=avaible_url, steemit=self.steem_account, voted=False)
+                db.session.add(url)
+            except:
+                pass
+        db.session.commit()
+        
+
+
+    def voting_list(self):
+        url_lists = UrlAction.query.filter(steemit=self.steem_account, voted=False)
+        for url_list in url_lists:
+            if not self.steemit.get_vp() >= settings.limit_power and self.steemit.get_rc() < 0.1 :
+                logging.info('Not vote!')
+            username = list(filter(lambda x: '@' in x, url_list.url.split('/')))[0].replace('@','')
+            try:
+                self.steemit.post_vote(username, url_list.url)
+                url_list.voted = True
+                db.session.add(url_list)
+                logging.info('TODO:Done!')
+            except:
+                pass
+        db.session.commit()        
+
 
 def control_flow():
     cron = Scheduler(daemon=True)
@@ -239,27 +258,14 @@ def control_flow():
     def job_function():
         steemit_user = Steemit.query.all()
         for steem in steemit_user:
-            vote_commit = PostVote(steem.author, steem.key)
+            vote_commit = PostVote(steem)
             vote_commit.voting_list()
-
-    atexit.register(lambda: cron.shutdown(wait=False))
-
-
-def clear_list():
-    cron = Scheduler(daemon=True)
-    cron.start()
-
-    @cron.interval_schedule(days=4)
-    def job_function():
-        vote_commit = PostVote()
-        vote_commit.removed_list()
 
     atexit.register(lambda: cron.shutdown(wait=False))
 
 if __name__ == '__main__':
     try:
         control_flow()
-        clear_list()
     except:
         pass
 
