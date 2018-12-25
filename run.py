@@ -15,7 +15,7 @@ from apscheduler.scheduler import Scheduler
 import flask_admin as admin
 import flask_login as login
 
-from utils import Curation, Steemit
+from utils import Curation, Steemit as _Steemit
 import settings
 
 app = Flask(__name__)
@@ -55,7 +55,7 @@ class User(db.Model):
 
     # Required for administrative interface
     def __unicode__(self):
-        return self.username
+        return self.login
 
 
 class Steemit(db.Model):
@@ -86,15 +86,18 @@ class Url(db.Model):
 
 
 class UrlAction(db.Model):
-    url = db.relationship(User, primary_key=True)
-    steemit = db.relationship(Steemit, primary_key=True)
+    url_id = db.Column(db.Integer(), db.ForeignKey(Url.id), primary_key=True)
+    steemit_id = db.Column(db.Integer(), db.ForeignKey(Steemit.id), primary_key=True)
+    url = db.relationship(Url)
+    steemit = db.relationship(Steemit)
+    voted = db.Column(db.Boolean, )
     expire_time = db.Column(db.DateTime)
 
     def __str__(self):
         return str(self.id)
 
     def __repr__(self):
-        return '<url %r>' % (self.expire_time)
+        return '<url %r - %r>' % (self.url_id, self.steemit_id)
 
 
 # Define login and registration forms (for flask-login)
@@ -182,6 +185,9 @@ init_login()
 # Create admin
 admin = base.Admin(app, 'Curations', index_view=MyAdminIndexView(), base_template='my_master.html')
 admin.add_view(MyModelView(User, db.session))
+admin.add_view(MyModelView(Steemit, db.session))
+admin.add_view(MyModelView(Url, db.session))
+admin.add_view(MyModelView(UrlAction, db.session))
 
 def build_sample_db():
     db.drop_all()
@@ -194,7 +200,7 @@ def build_sample_db():
 
 class PostVote:
     def __init__(self):
-        self.steemit = Steemit(settings.username)
+        self.steemit = _Steemit(settings.username)
         self.vote = self.vote_list()
         self.voted = self.voted_list()
 
@@ -229,7 +235,7 @@ def control_flow():
     cron = Scheduler(daemon=True)
     cron.start()
 
-    @cron.interval_schedule(minutes=10)
+    @cron.interval_schedule(minutes=1)
     def job_function():
         vote_commit = PostVote()
         vote_commit.voting_list()
