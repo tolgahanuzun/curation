@@ -20,7 +20,6 @@ import settings
 
 app = Flask(__name__)
 
-voted_txt = 'voted.txt'
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
 
@@ -191,6 +190,7 @@ admin.add_view(MyModelView(Steemit, db.session))
 admin.add_view(MyModelView(Url, db.session))
 admin.add_view(MyModelView(UrlAction, db.session))
 
+
 def build_sample_db():
     db.drop_all()
     db.create_all()
@@ -199,6 +199,7 @@ def build_sample_db():
     db.session.add(test_user)
     db.session.commit()
     return
+
 
 class PostVote:
     def __init__(self, steemit):
@@ -232,7 +233,6 @@ class PostVote:
                 pass
         db.session.commit()
         
-
 
     def voting_list(self):
         url_lists = UrlAction.query.filter(steemit=self.steem_account, voted=False)
