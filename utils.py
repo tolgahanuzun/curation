@@ -1,6 +1,7 @@
 import importlib
 import logging
 
+import requests
 from lightsteem.client import Client
 from lightsteem.datastructures import Operation
 
@@ -75,3 +76,10 @@ def avaible_link(link):
     if '#' in link:
         return False
     return True
+
+
+def get_expire_time(link):
+    data = requests.get(f'{link}.json').json()
+    if data['status'] == '200':
+        return data['post']['cashout_time']
+    return
