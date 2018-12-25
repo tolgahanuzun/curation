@@ -1,5 +1,7 @@
 apscheduler==2.1.2
 bs4
 flask
+Flask-Admin
+Flask-SQLAlchemy
 requests
 lightsteem
