@@ -90,7 +90,7 @@ class UrlAction(db.Model):
     steemit_id = db.Column(db.Integer(), db.ForeignKey(Steemit.id), primary_key=True)
     url = db.relationship(Url)
     steemit = db.relationship(Steemit)
-    voted = db.Column(db.Boolean, )
+    voted = db.Column(db.Boolean)
     expire_time = db.Column(db.DateTime)
 
     def __str__(self):
@@ -199,8 +199,8 @@ def build_sample_db():
     return
 
 class PostVote:
-    def __init__(self):
-        self.steemit = _Steemit(settings.username)
+    def __init__(self, username, steem_key):
+        self.steemit = _Steemit(username, steem_key)
         self.vote = self.vote_list()
         self.voted = self.voted_list()
 
@@ -237,8 +237,10 @@ def control_flow():
 
     @cron.interval_schedule(minutes=1)
     def job_function():
-        vote_commit = PostVote()
-        vote_commit.voting_list()
+        steemit_user = Steemit.query.all()
+        for steem in steemit_user:
+            vote_commit = PostVote(steem.author, steem.key)
+            vote_commit.voting_list()
 
     atexit.register(lambda: cron.shutdown(wait=False))
 
