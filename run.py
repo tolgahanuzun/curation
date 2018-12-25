@@ -8,7 +8,7 @@ from flask_admin import base, helpers, expose
 from flask_admin.contrib import sqla
 from flask_sqlalchemy import SQLAlchemy
 from wtforms import form, fields, validators
-from werkzeug.security import check_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 
 import atexit
 from apscheduler.scheduler import Scheduler
@@ -26,7 +26,7 @@ logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'steemit'
-app.config['DATABASE_FILE'] = 'tag.sqlite'
+app.config['DATABASE_FILE'] = 'steemit.sqlite'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + app.config['DATABASE_FILE']
 app.config['SQLALCHEMY_ECHO'] = False
 db = SQLAlchemy(app)
@@ -138,6 +138,20 @@ class MyAdminIndexView(base.AdminIndexView):
 def admin():
     return redirect(url_for('admin.login_view'))
 
+init_login()
+
+# Create admin
+admin = base.Admin(app, 'Curations', index_view=MyAdminIndexView(), base_template='my_master.html')
+admin.add_view(MyModelView(User, db.session))
+
+def build_sample_db():
+    db.drop_all()
+    db.create_all()
+
+    test_user = User(login="test", password=generate_password_hash("test"))
+    db.session.add(test_user)
+    db.session.commit()
+    return
 
 class PostVote:
     def __init__(self):
@@ -202,5 +216,9 @@ if __name__ == '__main__':
     except:
         pass
 
+    app_dir = os.path.realpath(os.path.dirname(__file__))
+    database_path = os.path.join(app_dir, app.config['DATABASE_FILE'])
+    if not os.path.exists(database_path):
+        build_sample_db()
     port = int(os.environ.get('PORT', 9090))
     app.run(host='0.0.0.0', port=port)
