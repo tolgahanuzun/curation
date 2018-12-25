@@ -58,6 +58,45 @@ class User(db.Model):
         return self.username
 
 
+class Steemit(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer(), db.ForeignKey(User.id))
+    user = db.relationship(User)
+
+    author = db.Column(db.String(200))
+    key = db.Column(db.String(500))
+
+    def __str__(self):
+        return str(self.id)
+
+    def __repr__(self):
+        return '<steemit_user %r>' % (self.author)
+
+
+class Url(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    url = db.Column(db.String(400))
+    expire_time = db.Column(db.DateTime)
+
+    def __str__(self):
+        return str(self.id)
+
+    def __repr__(self):
+        return '<url %r>' % (self.url[10:30])
+
+
+class UrlAction(db.Model):
+    url = db.relationship(User, primary_key=True)
+    steemit = db.relationship(Steemit, primary_key=True)
+    expire_time = db.Column(db.DateTime)
+
+    def __str__(self):
+        return str(self.id)
+
+    def __repr__(self):
+        return '<url %r>' % (self.expire_time)
+
+
 # Define login and registration forms (for flask-login)
 class LoginForm(form.Form):
     login = fields.StringField(validators=[validators.required()])
