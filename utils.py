@@ -1,12 +1,12 @@
 import importlib
 import logging
 
+import requests
 from lightsteem.client import Client
 from lightsteem.datastructures import Operation
 
 import settings
 
-client = Client(keys=[settings.steem_key])
 utopian_link = 'https://steemit.com/utopian-io/'
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -33,11 +33,12 @@ class Curation:
 
 
 class Steemit:
-    def __init__(self, username):
+    def __init__(self, username, steem_key):
         self.username = username
+        self.client = Client(keys=[steem_key]) 
     
     def get_account(self):
-        return client.account(self.username)
+        return self.client.account(self.username)
 
     def get_vp(self):
         account = self.get_account()
@@ -55,7 +56,7 @@ class Steemit:
                 "permlink": voting_link.split(f'{voting_user}/')[1],
                 "weight": weight,
             })
-            result = client.broadcast(op)
+            result = self.client.broadcast(op)
             logging.info(result)
         except:
             logging.info('Broadcast Fail!')
@@ -75,3 +76,10 @@ def avaible_link(link):
     if '#' in link:
         return False
     return True
+
+
+def get_expire_time(link):
+    data = requests.get(f'{link}.json').json()
+    if data['status'] == '200':
+        return data['post']['cashout_time']
+    return
