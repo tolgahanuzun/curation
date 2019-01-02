@@ -15,7 +15,7 @@ from apscheduler.scheduler import Scheduler
 import flask_admin as admin
 import flask_login as login
 
-from utils import get_expire_time, Curation, Steemit as _Steemit,
+from utils import get_expire_time, Curation, Steemit as _Steemit
 import settings
 
 app = Flask(__name__)
@@ -28,6 +28,7 @@ app.config['SECRET_KEY'] = 'steemit'
 app.config['DATABASE_FILE'] = 'steemit.sqlite'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + app.config['DATABASE_FILE']
 app.config['SQLALCHEMY_ECHO'] = False
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 
@@ -83,7 +84,18 @@ class Url(db.Model):
         return str(self.id)
 
     def __repr__(self):
-        return '<url %r>' % (self.url[10:30])
+        return '<url %r>' % (self.url[7:30])
+    
+    def get_or_create(self, url, expire_time):
+        get_url = self.query.filter_by(url=url).first() or False
+        if get_url:
+            return get_url
+        else:
+            self.url = url
+            self.expire_time = expire_time 
+            db.session.add(self)
+            db.session.commit()
+        return self
 
 
 class UrlAction(db.Model):
@@ -95,10 +107,23 @@ class UrlAction(db.Model):
     voted_time = db.Column(db.DateTime)
 
     def __str__(self):
-        return str(self.id)
+        return str(self.url.url)
 
     def __repr__(self):
         return '<url %r - %r>' % (self.url_id, self.steemit_id)
+    
+    def get_or_create(self, url, steemit, voted, voted_time=datetime.now()):
+        get_url = self.query.filter_by(url=url, steemit=steemit).first() or False
+        if get_url:
+            return get_url
+        else:
+            self.url = url
+            self.steemit = steemit
+            self.voted = voted
+            self.voted_time = voted_time
+            db.session.add(self)
+            db.session.commit()
+        return self
 
 
 # Define login and registration forms (for flask-login)
@@ -204,7 +229,7 @@ def build_sample_db():
 class PostVote:
     def __init__(self, steemit):
         self.steem_account = steemit
-        self.steemit = _Steemit(self.steem_account.username, self.steem_account.steem_key)
+        self.steemit = _Steemit(self.steem_account.author, self.steem_account.key)
         self.callback_type = self.steem_account.callback_type
         self.callback_name = self.steem_account.callback_name
         self.get_new_url()
@@ -215,39 +240,29 @@ class PostVote:
         datas = Curation(self.callback_type, self.callback_name).result
         for data in datas:
             expire_time = get_expire_time(data) or None
-            try:
-                url = Url(url=data, expire_time=datetime.strptime(expire_time, '%Y-%m-%dT%H:%M:%S'))
-                db.session.add(url)
-            except:
-                pass
-        db.session.commit()
-            
+            Url().get_or_create(url=data, expire_time=datetime.strptime(expire_time, '%Y-%m-%dT%H:%M:%S'))
+
 
     def vote_list(self):
-        avaible_urls = Url.query.filter(expire_time > datetime.now())
+        avaible_urls = Url.query.filter(Url.expire_time > datetime.now())
         for avaible_url in avaible_urls:
-            try:
-                url = UrlAction(url=avaible_url, steemit=self.steem_account, voted=False)
-                db.session.add(url)
-            except:
-                pass
-        db.session.commit()
+            UrlAction().get_or_create(url=avaible_url, steemit=self.steem_account, voted=False)
         
 
     def voting_list(self):
-        url_lists = UrlAction.query.filter(steemit=self.steem_account, voted=False)
+        url_lists = UrlAction.query.filter_by(steemit=self.steem_account, voted=False)
         for url_list in url_lists:
             if not self.steemit.get_vp() >= settings.limit_power and self.steemit.get_rc() < 0.1 :
-                logging.info('Not vote!')
-            username = list(filter(lambda x: '@' in x, url_list.url.split('/')))[0].replace('@','')
+                logging.info(f'Not vote! - {url_list}')
+            username = list(filter(lambda x: '@' in x, url_list.url.url.split('/')))[0].replace('@','')
             try:
-                self.steemit.post_vote(username, url_list.url)
+                self.steemit.post_vote(username, url_list.url.url)
                 url_list.voted = True
                 db.session.add(url_list)
-                logging.info('TODO:Done!')
+                db.session.commit()        
+                logging.info(f'Voted! - {url_list}')
             except:
                 pass
-        db.session.commit()        
 
 
 def control_flow():
